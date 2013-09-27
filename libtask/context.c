@@ -26,8 +26,11 @@
 #endif
 
 #if defined(__linux__) && defined(__arm__)
+/* NOTE(bv): commenting these two lines seems to work
+/*
 #define NEEDSWAPCONTEXT
 #define NEEDARMMAKECONTEXT
+*/
 #endif
 
 #if defined(__linux__) && defined(__mips__)
