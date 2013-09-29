@@ -16,9 +16,9 @@ Tasklist	taskrunqueue;
 Task	**alltask;
 int		nalltask;
 
-static char *argv0;
-static	void		contextswitch(Context *from, Context *to);
+static void contextswitch(Context *from, Context *to);
 
+#if 0
 static void
 taskdebug(char *fmt, ...)
 {
@@ -54,6 +54,9 @@ return;
 	else
 		fprint(fd, "%d._: %s\n", getpid(), buf);
 }
+#else
+#define taskdebug(...)
+#endif
 
 static void
 taskstart(uint y, uint x)
@@ -86,7 +89,7 @@ taskalloc(void (*fn)(void*), void *arg, uint stack)
 	/* allocate the task and stack together */
 	t = malloc(sizeof *t+stack);
 	if(t == nil){
-		fprint(2, "taskalloc malloc: %r\n");
+		fprintf(stderr, "taskalloc malloc\n");
 		abort();
 	}
 	memset(t, 0, sizeof *t);
@@ -103,7 +106,7 @@ taskalloc(void (*fn)(void*), void *arg, uint stack)
 
 	/* must initialize with current context */
 	if(getcontext(&t->context.uc) < 0){
-		fprint(2, "getcontext: %r\n");
+		fprintf(stderr, "getcontext\n");
 		abort();
 	}
 
@@ -145,7 +148,7 @@ taskcreate(void (*fn)(void*), void *arg, uint stack)
 	if(nalltask%64 == 0){
 		alltask = realloc(alltask, (nalltask+64)*sizeof(alltask[0]));
 		if(alltask == nil){
-			fprint(2, "out of memory\n");
+			fprintf(stderr, "out of memory\n");
 			abort();
 		}
 	}
@@ -214,17 +217,16 @@ static void
 contextswitch(Context *from, Context *to)
 {
 	if(swapcontext(&from->uc, &to->uc) < 0){
-		fprint(2, "swapcontext failed: %r\n");
+		fprintf(stderr, "swapcontext failed\n");
 		assert(0);
 	}
 }
 
-
-#ifdef _CORNET
+#if defined(_CORNET)
 void
 #else
 static void
-#endif /* _CORNET */
+#endif
 taskscheduler(void)
 {
 	int i;
@@ -233,17 +235,12 @@ taskscheduler(void)
 	taskdebug("scheduler enter");
 	for(;;){
 		if(taskcount == 0) {
-		    /* NOTE(bv): At this point we have nothing left to do. Perhaps all tasks are blocked, */
-		    /* waiting on some I/O event. Or it could be that we just started and there are no clients */
-		    /* connected. */
-		    /* Instead of calling exit(), here we should call into epoll() loop to wait for some activity on */
-		    /* watched file descriptors */
-		    free(alltask); /* bv */
+            free(alltask); /* bv */
 			exit(taskexitval);
-		}
+        }
 		t = taskrunqueue.head;
 		if(t == nil){
-			fprint(2, "no runnable tasks! %d tasks stalled\n", taskcount);
+			fprintf(stderr, "no runnable tasks! %d tasks stalled\n", taskcount);
 			exit(1);
 		}
 		deltask(&taskrunqueue, t);
@@ -282,7 +279,7 @@ taskname(char *fmt, ...)
 
 	t = taskrunning;
 	va_start(arg, fmt);
-	vsnprint(t->name, sizeof t->name, fmt, arg);
+	vsnprintf(t->name, sizeof t->name, fmt, arg);
 	va_end(arg);
 }
 
@@ -300,7 +297,7 @@ taskstate(char *fmt, ...)
 
 	t = taskrunning;
 	va_start(arg, fmt);
-	vsnprint(t->state, sizeof t->name, fmt, arg);
+	vsnprintf(t->state, sizeof t->name, fmt, arg);
 	va_end(arg);
 }
 
@@ -319,11 +316,12 @@ needstack(int n)
 
 	if((char*)&t <= (char*)t->stk
 	|| (char*)&t - (char*)t->stk < 256+n){
-		fprint(2, "task stack overflow: &t=%p tstk=%p n=%d\n", &t, t->stk, 256+n);
+		fprintf(stderr, "task stack overflow: &t=%p tstk=%p n=%d\n", &t, t->stk, 256+n);
 		abort();
 	}
 }
 
+#if 0
 static void
 taskinfo(int s)
 {
@@ -331,7 +329,7 @@ taskinfo(int s)
 	Task *t;
 	char *extra;
 
-	fprint(2, "task list:\n");
+	fprintf(stderr, "task list:\n");
 	for(i=0; i<nalltask; i++){
 		t = alltask[i];
 		if(t == taskrunning)
@@ -340,21 +338,21 @@ taskinfo(int s)
 			extra = " (ready)";
 		else
 			extra = "";
-		fprint(2, "%6d%c %-20s %s%s\n", 
+		fprintf(stderr, "%6d%c %-20s %s%s\n", 
 			t->id, t->system ? 's' : ' ', 
 			t->name, t->state, extra);
 	}
 }
+#endif
 
 /*
  * startup
  */
 
-#ifndef _CORNET
+#if !defined(_CORNET)
 static int taskargc;
 static char **taskargv;
 int mainstacksize;
-
 
 static void
 taskmainstart(void *v)

@@ -3,6 +3,5 @@ project(libcornet)
 
 set(CMAKE_C_FLAGS_DEBUG "-Wall -g")
 
-add_subdirectory(libtask)
 add_subdirectory(src)
 add_subdirectory(test)
