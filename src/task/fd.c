@@ -17,6 +17,39 @@ static Tasklist sleeping;
 static int sleepingcounted;
 static uvlong nsec(void);
 
+static int signaled = 0;
+
+void fdsignal() {
+    int i;
+
+    signaled = 1;
+
+    /* wake up tasks */
+#ifdef DEBUG    
+    printf("waking up %d tasks\n", npollfd);
+    /*printf("sleepingcounted= %d\n", sleepingcounted);
+    Task *t;
+	for(t=sleeping.head; t!=nil; t=t->next) {
+        printf("task %d is sleeping\n", t->id);
+    }*/
+    for (i = 0; i < npollfd; ++i) {
+        printf("task %d: %d\n", polltask[i]->id, polltask[i]->ready);
+    }
+#endif
+    for(i=0; i<npollfd; i++){
+        while(i < npollfd){
+            taskready(polltask[i]);
+            --npollfd;
+            pollfd[i] = pollfd[npollfd];
+            polltask[i] = polltask[npollfd];
+        }
+    }
+}
+
+int fdsignaled() {
+    return signaled;
+}
+
 void
 fdtask(void *v)
 {
@@ -24,12 +57,27 @@ fdtask(void *v)
 	Task *t;
 	uvlong now;
 	
-	tasksystem();
+	//tasksystem();
 	taskname("fdtask");
 	for(;;){
 		/* let everyone else run */
 		while(taskyield() > 0)
 			;
+
+#ifdef DEBUG        
+        for (i = 0; i < npollfd; ++i) {
+            printf("task %d: %d\n", polltask[i]->id, polltask[i]->ready);
+        }
+#endif
+
+        printf("npollfd= %d\n", npollfd);
+
+        /* NOTE(bv): somebody wants us to quit */
+        if (signaled) {            
+            printf("Exiting fdtask: id= %d\n", taskid());
+            return;
+        }
+
 		/* we're the only one runnable - poll for i/o */
 		errno = 0;
 		taskstate("poll");
@@ -154,9 +202,12 @@ fdread1(int fd, void *buf, int n)
 {
 	int m;
 	
-	do
+	do {
 		fdwait(fd, 'r');
-	while((m = read(fd, buf, n)) < 0 && errno == EAGAIN);
+        if (signaled) {
+            return 0;
+        }
+    } while((m = read(fd, buf, n)) < 0 && errno == EAGAIN);
 	return m;
 }
 
@@ -165,8 +216,12 @@ fdread(int fd, void *buf, int n)
 {
 	int m;
 	
-	while((m=read(fd, buf, n)) < 0 && errno == EAGAIN)
+	while((m=read(fd, buf, n)) < 0 && errno == EAGAIN) {
 		fdwait(fd, 'r');
+        if (signaled) {
+            return 0;
+        }
+    }
 	return m;
 }
 
@@ -177,8 +232,12 @@ fdwrite(int fd, void *buf, int n)
 	
 	for(tot=0; tot<n; tot+=m){
 		//while((m=write(fd, (char*)buf+tot, n-tot)) < 0 && errno == EAGAIN)
-        while((m=send(fd, (char*)buf+tot, n-tot, MSG_NOSIGNAL)) < 0 && errno == EAGAIN)
-			fdwait(fd, 'w');
+        while((m=send(fd, (char*)buf+tot, n-tot, MSG_NOSIGNAL)) < 0 && errno == EAGAIN) {
+            fdwait(fd, 'w');
+            if (signaled) {
+                return 0;
+            }
+        }
 		if(m < 0)
 			return m;
 		if(m == 0)

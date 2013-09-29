@@ -236,7 +236,8 @@ taskscheduler(void)
 	for(;;){
 		if(taskcount == 0) {
             free(alltask); /* bv */
-			exit(taskexitval);
+			//exit(taskexitval);
+            return;
         }
 		t = taskrunqueue.head;
 		if(t == nil){

@@ -29,6 +29,7 @@ void handler1(int fd) {
     while ((n = cornet_read(fd, buf, 256)) > 0) {
         if (!strncmp(buf, "quit", 4)) {
             cornet_write(fd, "handler1: quit\n", sizeof("handler1: quit\n") - 1);
+            cornet_signal();
             break;
         }
         fwrite(buf, 1, n, stdout);

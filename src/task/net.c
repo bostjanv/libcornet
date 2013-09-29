@@ -59,8 +59,15 @@ netaccept(int fd, char *server, int *port)
 	struct sockaddr_in sa;
 	uchar *ip;
 	socklen_t len;
-	
+
+
 	fdwait(fd, 'r');
+
+    /* bv */
+    int fdsignaled();
+    if (fdsignaled()) {
+        return -1;
+    }
 
 	taskstate("netaccept");
 	len = sizeof sa;

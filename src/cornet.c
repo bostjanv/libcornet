@@ -29,7 +29,14 @@ int cornet_add_server(struct cornet_config_t* config) {
 
 int cornet_fini() {
     /* TODO(bv): connect to the adm socket and arrange for quiting */
-    printf("cornet_fini: unimplemented yet\n");
+    //printf("cornet_fini: unimplemented yet\n");
+    
+    return 0;
+}
+
+int cornet_signal() {
+    void fdsignal();
+    fdsignal();
 
     return 0;
 }
@@ -48,6 +55,7 @@ void server_task(void* arg) {
     char remote[16];
     int rport;
 
+    taskname("server_task");
     config = (struct cornet_config_t*)arg;
     if ((fd = netannounce(config->istcp, config->server, config->port)) < 0) {
         fprintf(stderr, "cannot announce on tcp port %d: %s\n", config->port, strerror(errno));
@@ -61,13 +69,18 @@ void server_task(void* arg) {
         cconfig.fd = cfd;
         taskcreate(client_task, &cconfig, config->stack_size);
     }
+
+    printf("Exiting sever task: %d\n", taskid());
 }
 
 void client_task(void* arg) {
     struct client_config_t* config;
 
+    taskname("client_task");
     config = (struct client_config_t*)arg;
     config->h(config->fd);
+
+    printf("Exiting client task: %d\n", taskid());
 }
 
 inline

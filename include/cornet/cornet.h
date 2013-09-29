@@ -13,6 +13,7 @@ struct cornet_config_t {
 
 int cornet_init();
 int cornet_fini();
+int cornet_signal();
 int cornet_run();
 int cornet_add_server(struct cornet_config_t* config);
 
