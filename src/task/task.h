@@ -180,3 +180,9 @@ int		netdial(int, char*, int);
 #endif
 #endif
 
+
+/* bv */
+int tasksignal(int id);
+int tasksignalall();
+
+void taskprintall();

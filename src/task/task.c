@@ -30,7 +30,7 @@ taskdebug(char *fmt, ...)
 
 return;
 	va_start(arg, fmt);
-	vfprint(1, fmt, arg);
+	vfprintf(1, fmt, arg);
 	va_end(arg);
 return;
 
@@ -40,19 +40,19 @@ return;
 			p++;
 		else
 			p = argv0;
-		snprint(buf, sizeof buf, "/tmp/%s.tlog", p);
+		snprintf(buf, sizeof buf, "/tmp/%s.tlog", p);
 		if((fd = open(buf, O_CREAT|O_WRONLY, 0666)) < 0)
 			fd = open("/dev/null", O_WRONLY);
 	}
 
 	va_start(arg, fmt);
-	vsnprint(buf, sizeof buf, fmt, arg);
+	vsnprintf(buf, sizeof buf, fmt, arg);
 	va_end(arg);
 	t = taskrunning;
 	if(t)
-		fprint(fd, "%d.%d: %s\n", getpid(), t->id, buf);
+		fprintf(fd, "%d.%d: %s\n", getpid(), t->id, buf);
 	else
-		fprint(fd, "%d._: %s\n", getpid(), buf);
+		fprintf(fd, "%d._: %s\n", getpid(), buf);
 }
 #else
 #define taskdebug(...)
@@ -235,7 +235,8 @@ taskscheduler(void)
 	taskdebug("scheduler enter");
 	for(;;){
 		if(taskcount == 0) {
-            free(alltask); /* bv */
+            printf("nalltask: %d\n", nalltask);
+            free(alltask);
 			//exit(taskexitval);
             return;
         }
@@ -249,6 +250,7 @@ taskscheduler(void)
 		taskrunning = t;
 		tasknswitch++;
 		taskdebug("run %d (%s)", t->id, t->name);
+        printf("run %d (%s)\n", t->id, t->name);
 		contextswitch(&taskschedcontext, &t->context);
 //print("back in scheduler\n");
 		taskrunning = nil;
@@ -426,3 +428,51 @@ taskid(void)
 	return taskrunning->id;
 }
 
+/* bv */
+void fdsignalall();
+
+int tasksignalall() {
+    int i;
+
+    for (i = 0; i < nalltask; ++i) {
+        printf("task: id= %d, ready= %d, name= %s, state= %s\n", 
+                alltask[i]->id, alltask[i]->ready, alltask[i]->name, alltask[i]->state);
+    }
+    
+    for (i = 0; i < nalltask; ++i) {
+        alltask[i]->signaled = 1;
+    }
+
+    fdsignalall();
+
+    return nalltask;
+}
+
+int tasksignal(int id) {
+    int i;
+
+    for (i = 0; i < nalltask; ++i) {
+        printf("task: id= %d, ready= %d, name= %s, state= %s\n", 
+                alltask[i]->id, alltask[i]->ready, alltask[i]->name, alltask[i]->state);
+    }
+
+    for (i = 0; i < nalltask; ++i) {
+        if (alltask[i]->id == id) {
+            alltask[i]->signaled = 1;
+            fdsignalall();
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+
+void taskprintall() {
+    int i;
+
+    for (i = 0; i < nalltask; ++i) {
+        printf("task: id= %d, ready= %d, name= %s, state= %s\n", 
+                alltask[i]->id, alltask[i]->ready, alltask[i]->name, alltask[i]->state);
+    }
+}

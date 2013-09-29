@@ -166,6 +166,9 @@ struct Task
 	uchar	*stk;
 	uint	stksize;
 	int	exiting;
+    // TODO(bv): this flag is to be used
+    // for signaling a single task
+    int signaled;
 	int	alltaskslot;
 	int	system;
 	int	ready;

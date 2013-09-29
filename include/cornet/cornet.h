@@ -9,10 +9,12 @@ struct cornet_config_t {
     int                 port;
     int                 stack_size;
     cornet_handler_t    h;
+    char*               name;
 };
 
 int cornet_init();
 int cornet_fini();
+int cornet_signalall();
 int cornet_signal();
 int cornet_run();
 int cornet_add_server(struct cornet_config_t* config);

@@ -8,14 +8,18 @@ static void handler1(int fd);
 static void handler2(int fd);
 
 int main() {
+    int id1, id2;
+
     struct cornet_config_t config1 = {
-        1, NULL, 1111, STACK_SIZE, handler1};
+        1, NULL, 1111, STACK_SIZE, handler1, "server1"};
     struct cornet_config_t config2 = {
-        1, NULL, 1112, STACK_SIZE, handler2};
+        1, NULL, 1112, STACK_SIZE, handler2, "server2"};
 
     cornet_init();
-    cornet_add_server(&config1);
-    cornet_add_server(&config2);
+    id1 = cornet_add_server(&config1);
+    printf("id1= %d\n", id1);
+    id2 = cornet_add_server(&config2);
+    printf("id2= %d\n", id2);
     cornet_run();
     cornet_fini();
 
@@ -24,13 +28,16 @@ int main() {
 
 void handler1(int fd) {
     char buf[256];
-    int n;
+    int n, id;
 
     while ((n = cornet_read(fd, buf, 256)) > 0) {
         if (!strncmp(buf, "quit", 4)) {
             cornet_write(fd, "handler1: quit\n", sizeof("handler1: quit\n") - 1);
-            cornet_signal();
+            cornet_signalall();
             break;
+        } else if (!strncmp(buf, "signal", 6)) {
+            sscanf(buf, "signal %d", &id);
+            cornet_signal(id);
         }
         fwrite(buf, 1, n, stdout);
 
@@ -38,7 +45,7 @@ void handler1(int fd) {
         cornet_write(fd, buf, n);
     }
 
-    cornet_close(fd);
+    //cornet_close(fd);
     printf("handler1: connection closed\n");
 }
 
@@ -56,6 +63,6 @@ void handler2(int fd) {
         cornet_write(fd, "handler2: ", sizeof("handler2: ") - 1);
         cornet_write(fd, buf, n);
     }
-    cornet_close(fd);
+    //cornet_close(fd);
     printf("handler2: connection closed\n");
 }

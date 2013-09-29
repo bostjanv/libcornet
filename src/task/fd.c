@@ -17,15 +17,15 @@ static Tasklist sleeping;
 static int sleepingcounted;
 static uvlong nsec(void);
 
-static int signaled = 0;
+/* bv */
+#if 0
+static Task* fdtask_;
 
-void fdsignal() {
+void fdsignalall() {
     int i;
 
-    signaled = 1;
-
     /* wake up tasks */
-#ifdef DEBUG    
+#ifdef DEBUG
     printf("waking up %d tasks\n", npollfd);
     /*printf("sleepingcounted= %d\n", sleepingcounted);
     Task *t;
@@ -33,11 +33,16 @@ void fdsignal() {
         printf("task %d is sleeping\n", t->id);
     }*/
     for (i = 0; i < npollfd; ++i) {
-        printf("task %d: %d\n", polltask[i]->id, polltask[i]->ready);
+        printf("task: id= %d, ready= %d, name= %s, state= %s\n", 
+                polltask[i]->id, polltask[i]->ready, polltask[i]->name, polltask[i]->state);
     }
 #endif
+    /* signal fdtask */
+    fdtask_->signaled = 1;
+
     for(i=0; i<npollfd; i++){
         while(i < npollfd){
+            polltask[i]->signaled = 1;
             taskready(polltask[i]);
             --npollfd;
             pollfd[i] = pollfd[npollfd];
@@ -45,9 +50,21 @@ void fdsignal() {
         }
     }
 }
+#endif
 
-int fdsignaled() {
-    return signaled;
+void fdsignalall() {
+    int i;
+
+    for(i=0; i<npollfd; i++){
+        while(i < npollfd){
+            if (polltask[i]->signaled == 1) {
+                taskready(polltask[i]);
+                --npollfd;
+                pollfd[i] = pollfd[npollfd];
+                polltask[i] = polltask[npollfd];
+            }
+        }
+    }
 }
 
 void
@@ -56,24 +73,26 @@ fdtask(void *v)
 	int i, ms;
 	Task *t;
 	uvlong now;
-	
+
 	//tasksystem();
+    //fdtask_ = taskrunning;
 	taskname("fdtask");
 	for(;;){
 		/* let everyone else run */
 		while(taskyield() > 0)
 			;
 
-#ifdef DEBUG        
+#if 1
         for (i = 0; i < npollfd; ++i) {
             printf("task %d: %d\n", polltask[i]->id, polltask[i]->ready);
         }
-#endif
 
         printf("npollfd= %d\n", npollfd);
+#endif
 
         /* NOTE(bv): somebody wants us to quit */
-        if (signaled) {            
+        if (taskrunning->signaled) {            
+            taskprintall();
             printf("Exiting fdtask: id= %d\n", taskid());
             return;
         }
@@ -201,10 +220,13 @@ int
 fdread1(int fd, void *buf, int n)
 {
 	int m;
+    Task* t;
 	
+    t = taskrunning;
+
 	do {
 		fdwait(fd, 'r');
-        if (signaled) {
+        if (t->signaled) {
             return 0;
         }
     } while((m = read(fd, buf, n)) < 0 && errno == EAGAIN);
@@ -215,10 +237,13 @@ int
 fdread(int fd, void *buf, int n)
 {
 	int m;
+    Task *t;
+
+    t = taskrunning;
 	
 	while((m=read(fd, buf, n)) < 0 && errno == EAGAIN) {
 		fdwait(fd, 'r');
-        if (signaled) {
+        if (t->signaled) {
             return 0;
         }
     }
@@ -229,12 +254,15 @@ int
 fdwrite(int fd, void *buf, int n)
 {
 	int m, tot;
+    Task* t;
+
+    t = taskrunning;
 	
 	for(tot=0; tot<n; tot+=m){
 		//while((m=write(fd, (char*)buf+tot, n-tot)) < 0 && errno == EAGAIN)
         while((m=send(fd, (char*)buf+tot, n-tot, MSG_NOSIGNAL)) < 0 && errno == EAGAIN) {
             fdwait(fd, 'w');
-            if (signaled) {
+            if (t->signaled) {
                 return 0;
             }
         }

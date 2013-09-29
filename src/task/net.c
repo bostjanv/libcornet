@@ -59,13 +59,14 @@ netaccept(int fd, char *server, int *port)
 	struct sockaddr_in sa;
 	uchar *ip;
 	socklen_t len;
+    Task *t;
 
 
 	fdwait(fd, 'r');
 
     /* bv */
-    int fdsignaled();
-    if (fdsignaled()) {
+    t = taskrunning;
+    if (t->signaled) {
         return -1;
     }
 
