@@ -185,4 +185,4 @@ int		netdial(int, char*, int);
 int tasksignal(int id);
 int tasksignalall();
 
-void taskprintall();
+void taskprintall(int fd);

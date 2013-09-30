@@ -7,6 +7,8 @@
 static void handler1(int fd);
 static void handler2(int fd);
 
+void cornet_debug(int fd);
+
 int main() {
     int id1, id2;
 
@@ -17,9 +19,7 @@ int main() {
 
     cornet_init();
     id1 = cornet_add_server(&config1);
-    printf("id1= %d\n", id1);
     id2 = cornet_add_server(&config2);
-    printf("id2= %d\n", id2);
     cornet_run();
     cornet_fini();
 
@@ -30,6 +30,11 @@ void handler1(int fd) {
     char buf[256];
     int n, id;
 
+    n = snprintf(buf, 256, "Welcome abroad (handler1)\n\n");
+    if (n < 256) {
+        cornet_write(fd, buf, n);
+    }
+
     while ((n = cornet_read(fd, buf, 256)) > 0) {
         if (!strncmp(buf, "quit", 4)) {
             cornet_write(fd, "handler1: quit\n", sizeof("handler1: quit\n") - 1);
@@ -38,11 +43,13 @@ void handler1(int fd) {
         } else if (!strncmp(buf, "signal", 6)) {
             sscanf(buf, "signal %d", &id);
             cornet_signal(id);
+        } else if (!strncmp(buf, "debug", 5)) {
+            cornet_debug(fd);
         }
-        fwrite(buf, 1, n, stdout);
+        //fwrite(buf, 1, n, stdout);
 
-        cornet_write(fd, "handler1: ", sizeof("handler1: ") - 1);
-        cornet_write(fd, buf, n);
+        //cornet_write(fd, "handler1: ", sizeof("handler1: ") - 1);
+        //cornet_write(fd, buf, n);
     }
 
     //cornet_close(fd);
@@ -53,12 +60,17 @@ void handler2(int fd) {
     char buf[256];
     int n;
 
+    n = snprintf(buf, 256, "Welcome abroad (handler2)\n\n");
+    if (n < 256) {
+        cornet_write(fd, buf, n);
+    }
+
     while ((n = cornet_read(fd, buf, 256)) > 0) {
         if (!strncmp(buf, "quit", 4)) {
             cornet_write(fd, "handler2: quit\n", sizeof("handler2: quit\n") - 1);
             break;
         }
-        fwrite(buf, 1, n, stdout);
+        //fwrite(buf, 1, n, stdout);
 
         cornet_write(fd, "handler2: ", sizeof("handler2: ") - 1);
         cornet_write(fd, buf, n);

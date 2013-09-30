@@ -10,6 +10,8 @@
 static void server_task(void*);
 static void client_task(void*);
 
+void corner_debug();
+
 struct client_config_t {
     cornet_handler_t    h;
     int                 fd;
@@ -73,13 +75,15 @@ void server_task(void* arg) {
 
 void client_task(void* arg) {
     struct client_config_t* config;
+    int fd;
 
-    taskname("client_task");
     config = (struct client_config_t*)arg;
-    config->h(config->fd);
-
-    close(config->fd);
-    printf("Exiting client task: %d\n", taskid());
+    fd = config->fd;
+    printf("Entering client task: %d (fd= %d)\n", taskid(), fd);
+    taskname("client_task");
+    config->h(fd);
+    printf("Exiting client task: %d, closing fd= %d\n", taskid(), fd);
+    close(fd);
 }
 
 inline
@@ -107,4 +111,11 @@ int cornet_close(int fd) {
     }
 
     return rc;
+}
+
+void taskprintall();
+void fdprintfdpoll();
+void cornet_debug(int fd) {
+    taskprintall(fd);
+    fdprintfdpoll();
 }

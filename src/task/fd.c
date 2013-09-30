@@ -55,16 +55,68 @@ void fdsignalall() {
 void fdsignalall() {
     int i;
 
+#ifdef DEBUG
+    printf("pollfd tasks (n= %d):\n", npollfd);
+    for (i = 0; i < npollfd; ++i) {
+        printf("task: id= %d, ready= %d, signaled= %d, name= %s, state= %s\n",
+               polltask[i]->id, polltask[i]->ready, polltask[i]->signaled, polltask[i]->name, polltask[i]->state);
+    }
+#endif
+
     for(i=0; i<npollfd; i++){
-        while(i < npollfd){
-            if (polltask[i]->signaled == 1) {
-                taskready(polltask[i]);
-                --npollfd;
-                pollfd[i] = pollfd[npollfd];
-                polltask[i] = polltask[npollfd];
-            }
+        while (i < npollfd && polltask[i]->signaled == 1) {
+//printf("removing task from pollfd (id= %d)\n", polltask[i]->id);
+            taskready(polltask[i]);
+            --npollfd;
+            pollfd[i] = pollfd[npollfd];
+            polltask[i] = polltask[npollfd];
         }
     }
+}
+
+void fdsignal(int id) {
+    int i;
+
+    for(i=0; i<npollfd; i++){
+        if (polltask[i]->id == id && polltask[i]->signaled == 1) {
+            taskready(polltask[i]);
+            --npollfd;
+            pollfd[i] = pollfd[npollfd];
+            polltask[i] = polltask[npollfd];
+            return;
+        }
+    }
+    fprintf(stderr, "can't fdsignal task (id= %d)\n", id);
+}
+
+void fdprintfdpoll(int fd) {
+    int i, n;
+    char buf[1024];
+
+    n = snprintf(buf, 1024, "pollfd tasks (n= %d):\n", npollfd);
+    if (n >= 1024) {
+        fprintf(stderr, "snprintf truncation occured\n");
+        return;
+    }
+    fdwrite(fd, buf, n);
+
+    for (i = 0; i < npollfd; ++i) {
+        n = snprintf(buf, 1024, "task: id= %d, ready= %d, signaled= %d, name= %s, state= %s\n",
+                     polltask[i]->id, polltask[i]->ready, polltask[i]->signaled, polltask[i]->name, polltask[i]->state);
+        if (n >= 1024) {
+            fprintf(stderr, "snprintf truncation occured\n");
+            return;
+        }
+        fdwrite(fd, buf, n);
+    }
+
+#if 0
+    printf("pollfd tasks (n= %d):\n", npollfd);
+    for (i = 0; i < npollfd; ++i) {
+        printf("task: id= %d, ready= %d, signaled= %d, name= %s, state= %s\n",
+                polltask[i]->id, polltask[i]->ready, polltask[i]->signaled, polltask[i]->name, polltask[i]->state);
+    }
+#endif
 }
 
 void
@@ -82,7 +134,7 @@ fdtask(void *v)
 		while(taskyield() > 0)
 			;
 
-#if 1
+#if 0
         for (i = 0; i < npollfd; ++i) {
             printf("task %d: %d\n", polltask[i]->id, polltask[i]->ready);
         }
@@ -90,12 +142,16 @@ fdtask(void *v)
         printf("npollfd= %d\n", npollfd);
 #endif
 
-        /* NOTE(bv): somebody wants us to quit */
-        if (taskrunning->signaled) {            
-            taskprintall();
+        if (npollfd == 0) {
             printf("Exiting fdtask: id= %d\n", taskid());
             return;
         }
+
+//        /* NOTE(bv): somebody wants us to quit */
+//        if (taskrunning->signaled) {
+//            printf("Exiting fdtask: id= %d\n", taskid());
+//            return;
+//        }
 
 		/* we're the only one runnable - poll for i/o */
 		errno = 0;
@@ -185,6 +241,11 @@ void
 fdwait(int fd, int rw)
 {
 	int bits;
+
+    if (taskrunning->signaled) {
+        printf("we have been signaled, break out of fdwait (id= %d)\n", taskrunning->id);
+        return;
+    }
 
 	if(!startedfdtask){
 		startedfdtask = 1;
