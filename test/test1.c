@@ -23,58 +23,58 @@ int main() {
     cornet_run();
     cornet_fini();
 
+    // Suppres warning
+    (void)id1;
+    (void)id2;
+
     return 0;
 }
 
+#define SIZE 256
 void handler1(int fd) {
-    char buf[256];
+    char buf[SIZE];
     int n, id;
 
-    n = snprintf(buf, 256, "Welcome abroad (handler1)\n\n");
-    if (n < 256) {
-        cornet_write(fd, buf, n);
-    }
+    n = snprintf(buf, SIZE, "Welcome abroad (handler1)\n");
+    cornet_write(fd, buf, n < SIZE ? n : SIZE);
 
-    while ((n = cornet_read(fd, buf, 256)) > 0) {
+    n = snprintf(buf, SIZE, "Available commands are: 'debug'', 'signal N (where N equals task's id) and 'quit'\n\n");
+    cornet_write(fd, buf, n < SIZE ? n : SIZE);
+
+    while ((n = cornet_read(fd, buf, SIZE - 1)) > 0) {
+        buf[n] = 0;
         if (!strncmp(buf, "quit", 4)) {
             cornet_write(fd, "handler1: quit\n", sizeof("handler1: quit\n") - 1);
             cornet_signalall();
             break;
         } else if (!strncmp(buf, "signal", 6)) {
+            id = 0;
             sscanf(buf, "signal %d", &id);
             cornet_signal(id);
         } else if (!strncmp(buf, "debug", 5)) {
             cornet_debug(fd);
+        } else if (n > 2) {
+            cornet_write(fd, "unknown command: ", sizeof("unknown command: ") - 1);
+            cornet_write(fd, buf, n);
         }
-        //fwrite(buf, 1, n, stdout);
-
-        //cornet_write(fd, "handler1: ", sizeof("handler1: ") - 1);
-        //cornet_write(fd, buf, n);
     }
-
-    //cornet_close(fd);
-    printf("handler1: connection closed\n");
+    printf("Bye (handler1)\n");
 }
 
 void handler2(int fd) {
-    char buf[256];
+    char buf[SIZE];
     int n;
 
-    n = snprintf(buf, 256, "Welcome abroad (handler2)\n\n");
-    if (n < 256) {
-        cornet_write(fd, buf, n);
-    }
+    n = snprintf(buf, SIZE, "Welcome abroad (handler2)\n\n");
+    cornet_write(fd, buf, n < SIZE ? n : SIZE);
 
-    while ((n = cornet_read(fd, buf, 256)) > 0) {
-        if (!strncmp(buf, "quit", 4)) {
-            cornet_write(fd, "handler2: quit\n", sizeof("handler2: quit\n") - 1);
+    while ((n = cornet_read(fd, buf, SIZE)) > 0) {
+        buf[n] = 0;
+        if (!strncmp(buf, "quit", 4)) {            
             break;
         }
-        //fwrite(buf, 1, n, stdout);
-
-        cornet_write(fd, "handler2: ", sizeof("handler2: ") - 1);
+        //cornet_write(fd, "handler2: ", sizeof("handler2: ") - 1);
         cornet_write(fd, buf, n);
-    }
-    //cornet_close(fd);
-    printf("handler2: connection closed\n");
+    }    
+    printf("Bye (handler2)\n");
 }
