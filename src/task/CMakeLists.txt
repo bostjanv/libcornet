@@ -8,6 +8,9 @@ set(libtask_sources
     context.c
     fd.c
     net.c
-    task.c)
+    task.c
+    rendez.c
+    qlock.c
+)
 
 add_library(task STATIC ${libtask_sources})
