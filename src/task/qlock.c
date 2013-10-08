@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include "taskimpl.h"
 
 /*
@@ -16,7 +17,7 @@ _qlock(QLock *l, int block)
 	taskstate("qlock");
 	taskswitch();
 	if(l->owner != taskrunning){
-		fprint(2, "qlock: owner=%p self=%p oops\n", l->owner, taskrunning);
+		fprintf(stderr, "qlock: owner=%p self=%p oops\n", l->owner, taskrunning);
 		abort();
 	}
 	return 1;
@@ -40,7 +41,7 @@ qunlock(QLock *l)
 	Task *ready;
 	
 	if(l->owner == 0){
-		fprint(2, "qunlock: owner=0\n");
+		fprintf(stderr, "qunlock: owner=0\n");
 		abort();
 	}
 	if((l->owner = ready = l->waiting.head) != nil){
@@ -121,12 +122,12 @@ wunlock(RWLock *l)
 	Task *t;
 	
 	if(l->writer == nil){
-		fprint(2, "wunlock: not locked\n");
+		fprintf(stderr, "wunlock: not locked\n");
 		abort();
 	}
 	l->writer = nil;
 	if(l->readers != 0){
-		fprint(2, "wunlock: readers\n");
+		fprintf(stderr, "wunlock: readers\n");
 		abort();
 	}
 	while((t = l->rwaiting.head) != nil){
