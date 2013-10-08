@@ -182,7 +182,12 @@ int		netdial(int, char*, int);
 
 
 /* bv */
+void taskscheduler();
 int tasksignal(int id);
+int tasksignalfd(int fd);
 int tasksignalall();
+int tasksignaled();
+void tasksignalreset();
 
 void taskprintall(int fd);
+void fdprintfdpoll();

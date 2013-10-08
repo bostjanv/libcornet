@@ -440,6 +440,7 @@ taskid(void)
 /* bv */
 void fdsignalall();
 void fdsignal(int id);
+int fdsignal1(int fd);
 
 int tasksignalall() {
     int i;
@@ -486,6 +487,19 @@ printf("bv: signaling task (id= %d)\n", id);
     return 0;
 }
 
+int tasksignalfd(int fd) {
+    fdsignal1(fd);
+
+    return 0;
+}
+
+int tasksignaled() {
+    return taskrunning->signaled;
+}
+
+void tasksignalreset() {
+    taskrunning->signaled = 0;
+}
 
 void taskprintall(int fd) {
     int i, n;

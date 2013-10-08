@@ -89,6 +89,26 @@ void fdsignal(int id) {
     fprintf(stderr, "can't fdsignal task (id= %d)\n", id);
 }
 
+// Signal all task that are beeing blocked 
+// waiting for activity on the file descriptor fd
+int fdsignal1(int fd) {
+    int i, c;
+
+    /* wake up the guys who deserve it */
+    for(i=0,c=0; i<npollfd; i++){
+        while(i < npollfd && pollfd[i].fd == fd){
+            c++;
+            polltask[i]->signaled = 1;
+            taskready(polltask[i]);
+            --npollfd;
+            pollfd[i] = pollfd[npollfd];
+            polltask[i] = polltask[npollfd];
+        }
+    }
+
+    return c;
+}
+
 void fdprintfdpoll(int fd) {
     int i, n;
     char buf[1024];
@@ -288,6 +308,7 @@ fdread1(int fd, void *buf, int n)
 	do {
 		fdwait(fd, 'r');
         if (t->signaled) {
+            //t->signaled = 0;
             return 0;
         }
     } while((m = read(fd, buf, n)) < 0 && errno == EAGAIN);
@@ -305,6 +326,7 @@ fdread(int fd, void *buf, int n)
 	while((m=read(fd, buf, n)) < 0 && errno == EAGAIN) {
 		fdwait(fd, 'r');
         if (t->signaled) {
+            //t->signaled = 0;
             return 0;
         }
     }
@@ -324,6 +346,7 @@ fdwrite(int fd, void *buf, int n)
         while((m=send(fd, (char*)buf+tot, n-tot, MSG_NOSIGNAL)) < 0 && errno == EAGAIN) {
             fdwait(fd, 'w');
             if (t->signaled) {
+                //t->signaled = 0;
                 return 0;
             }
         }

@@ -7,12 +7,6 @@
 
 #define STACK_SIZE 32768
 
-void taskscheduler();
-int  tasksignal(int id);
-int  tasksignall(); 
-void taskprintall();
-void fdprintfdpoll();
-
 struct fdpair {
     int fd1;
     int fd2;
@@ -88,22 +82,38 @@ void io_task12(void* arg) {
     p = (struct fdpair*)arg;
 
     n = snprintf(buf, SIZE, "There is a talker available, you can start talking now ...\n");
-    fdwrite(p->fd1, buf, n);
+    if (fdwrite(p->fd1, buf, n) != n) {
+        printf("XXX11\n");
+    }
 
     // TODO(bv): we should extend the fdwait function to allow to select
     // between different descriptors. We need this to be able to detect
     // the activities on both channels simultaneously. The scenario goes like this:
-    // we are triing to read from fd1 but in the meantime fd2 disconnet. So we want
+    // we are trying to read from fd1 but in the meantime fd2 disconnects. So we want
     // to break the reading from fd1.
+    // Update: it seems that this is doable without select feature. But we need to be able
+    // to inform the opposite site that we have been disconnected. Therefor we extended
+    // the signaling mechanism to allow signaling the tasks that are beeing blocked on
+    // specific file descriptor.
 
     while ((n = fdread(p->fd1, buf, SIZE)) > 0) {
-       if (fdwrite(p->fd2, buf, n) != n) {
+        if (fdwrite(p->fd2, buf, n) != n) {
             printf("XXX12\n");
-       }
+        }
     }
-    
-    printf("Closing connection 1\n");
-    close(p->fd1);
+   
+    if (n == 0 && tasksignaled()) {
+        // We have been signaled.
+        tasksignalreset();
+        chansendul(chan, p->fd1);
+    } else {
+        printf("Closing connection 1\n");
+        n = snprintf(buf, SIZE, "1 hanged up ..., wait for another one\n");
+        fdwrite(p->fd2, buf, n);
+        tasksignalfd(p->fd2);
+        close(p->fd1);
+    }
+
     free(p);
 }
 
@@ -115,47 +125,27 @@ void io_task21(void* arg) {
     p = (struct fdpair*)arg;
     
     n = snprintf(buf, SIZE, "A talker is already waiting for you, the conversation can start emediately ...\n");
-    fdwrite(p->fd2, buf, n);
+    if (fdwrite(p->fd2, buf, n) != n) {
+        printf("XXX21\n");
+    }
 
     while ((n = fdread(p->fd2, buf, SIZE)) > 0) {
-       if (fdwrite(p->fd1, buf, n) != n) {
-            printf("XXX21\n");
-       }
-    }
-       
-    printf("Closing connection 2\n");
-    close(p->fd2);
-    free(p);
-}
-
-#if 0
-
-char buf[SIZE];
-    int n, id;
-
-    n = snprintf(buf, SIZE, "Welcome abroad (handler1)\n");
-    cornet_write(fd, buf, n < SIZE ? n : SIZE);
-
-    n = snprintf(buf, SIZE, "Available commands are: 'debug'', 'signal N (where N equals task's id) and 'quit'\n\n");
-    cornet_write(fd, buf, n < SIZE ? n : SIZE);
-
-    while ((n = cornet_read(fd, buf, SIZE - 1)) > 0) {
-        buf[n] = 0;
-        if (!strncmp(buf, "quit", 4)) {
-            cornet_write(fd, "handler1: quit\n", sizeof("handler1: quit\n") - 1);
-            cornet_signalall();
-            break;
-        } else if (!strncmp(buf, "signal", 6)) {
-            id = 0;
-            sscanf(buf, "signal %d", &id);
-            cornet_signal(id);
-        } else if (!strncmp(buf, "debug", 5)) {
-            cornet_debug(fd);
-        } else if (n > 2) {
-            cornet_write(fd, "unknown command: ", sizeof("unknown command: ") - 1);
-            cornet_write(fd, buf, n);
+        if (fdwrite(p->fd1, buf, n) != n) {
+            printf("XXX22\n");
         }
     }
-    printf("Bye (handler1)\n");
+      
+    if (n == 0 && tasksignaled()) {
+        // We have been signaled.
+        tasksignalreset();
+        chansendul(chan, p->fd2);
+    } else {
+        printf("Closing connection 2\n");
+        n = snprintf(buf, SIZE, "2 hanged up ..., wait for another one\n");
+        fdwrite(p->fd1, buf, n);
+        tasksignalfd(p->fd1);
+        close(p->fd2);
+    }
+    
+    free(p);
 }
-#endif
