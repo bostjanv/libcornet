@@ -1,3 +1,4 @@
 build
 arch
 *.swp
+CMakeLists.txt.user

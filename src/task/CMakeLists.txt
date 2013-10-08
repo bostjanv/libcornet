@@ -11,6 +11,7 @@ set(libtask_sources
     task.c
     rendez.c
     qlock.c
+    channel.c
 )
 
 add_library(task STATIC ${libtask_sources})

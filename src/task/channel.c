@@ -1,5 +1,6 @@
 /* Copyright (c) 2005 Russ Cox, MIT; see COPYRIGHT */
 
+#include <stdio.h>
 #include "taskimpl.h"
 
 Channel*
@@ -9,7 +10,7 @@ chancreate(int elemsize, int bufsize)
 
 	c = malloc(sizeof *c+bufsize*elemsize);
 	if(c == nil){
-		fprint(2, "chancreate malloc: %r");
+        fprintf(stderr, "chancreate malloc\n");
 		exit(1);
 	}
 	memset(c, 0, sizeof *c);
@@ -109,7 +110,7 @@ altdequeue(Alt *a)
 
 	ar = chanarray(a->c, a->op);
 	if(ar == nil){
-		fprint(2, "bad use of altdequeue op=%d\n", a->op);
+        fprintf(stderr, "bad use of altdequeue op=%d\n", a->op);
 		abort();
 	}
 
@@ -118,7 +119,7 @@ altdequeue(Alt *a)
 			delarray(ar, i);
 			return;
 		}
-	fprint(2, "cannot find self in altdq\n");
+    fprintf(stderr, "cannot find self in altdq\n");
 	abort();
 }
 
@@ -238,14 +239,14 @@ chanalt(Alt *a)
 		a[i].task = t;
 		a[i].xalt = a;
 	}
-if(dbgalt) print("alt ");
+if(dbgalt) printf("alt ");
 	ncan = 0;
 	for(i=0; i<n; i++){
 		c = a[i].c;
-if(dbgalt) print(" %c:", "esrnb"[a[i].op]);
-if(dbgalt) { if(c->name) print("%s", c->name); else print("%p", c); }
+if(dbgalt) printf(" %c:", "esrnb"[a[i].op]);
+if(dbgalt) { if(c->name) printf("%s", c->name); else printf("%p", c); }
 		if(altcanexec(&a[i])){
-if(dbgalt) print("*");
+if(dbgalt) printf("*");
 			ncan++;
 		}
 	}
@@ -256,9 +257,9 @@ if(dbgalt) print("*");
 				if(j-- == 0){
 if(dbgalt){
 c = a[i].c;
-print(" => %c:", "esrnb"[a[i].op]);
-if(c->name) print("%s", c->name); else print("%p", c);
-print("\n");
+printf(" => %c:", "esrnb"[a[i].op]);
+if(c->name) printf("%s", c->name); else printf("%p", c);
+printf("\n");
 }
 					altexec(&a[i]);
 					return i;
@@ -266,7 +267,7 @@ print("\n");
 			}
 		}
 	}
-if(dbgalt)print("\n");
+if(dbgalt)printf("\n");
 
 	if(!canblock)
 		return -1;
